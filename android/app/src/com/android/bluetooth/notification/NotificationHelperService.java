@@ -26,7 +26,6 @@ import android.app.Service;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
@@ -169,15 +168,14 @@ public class NotificationHelperService extends Service {
                             new Intent("android.settings.BLUETOOTH_DASHBOARD_SETTINGS"),
                             PendingIntent.FLAG_IMMUTABLE));
         } else if (!Util.isWatch(this)) {
-            // Do not display url link on watch, as they cannot show webpage
-            String helpLinkUrl = getString(R.string.config_apmLearnMoreLink);
+            // DiamaneOS: Bluetooth settings, where it can be turned off, not a Google help page.
             builder.setContentIntent(
                     PendingIntent.getActivity(
                             this,
                             PendingIntent.FLAG_UPDATE_CURRENT,
-                            new Intent(Intent.ACTION_VIEW)
-                                    .setData(Uri.parse(helpLinkUrl))
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            new Intent("android.settings.BLUETOOTH_DASHBOARD_SETTINGS")
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                                            | Intent.FLAG_ACTIVITY_CLEAR_TASK),
                             PendingIntent.FLAG_IMMUTABLE));
         }
 
