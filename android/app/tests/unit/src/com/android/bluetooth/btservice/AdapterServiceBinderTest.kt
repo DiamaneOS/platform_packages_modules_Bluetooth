@@ -104,7 +104,7 @@ class AdapterServiceBinderTest {
         val result = binder.cancelDiscovery(source)
 
         assertThat(result).isFalse()
-        verify(service, never()).cancelDiscovery(any())
+        verify(service, never()).cancelDiscovery(any(), any())
     }
 
     @Test
