@@ -22,6 +22,8 @@ import android.bluetooth.BluetoothProfile.STATE_CONNECTING
 import android.bluetooth.BluetoothProfile.STATE_DISCONNECTED
 import android.bluetooth.BluetoothUuid
 import android.provider.Settings
+import android.os.StrictMode
+import android.os.strictmode.Violation
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import androidx.test.platform.app.InstrumentationRegistry
@@ -42,6 +44,7 @@ import com.google.common.hash.Funnels
 import com.google.common.truth.Truth.assertThat
 import com.google.protobuf.InvalidProtocolBufferException
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.time.LocalDateTime
 import java.time.ZoneId
 import org.junit.After
@@ -49,6 +52,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.junit.rules.TemporaryFolder
 import org.mockito.Mock
 import org.mockito.Mockito
 import org.mockito.Mockito.doNothing
@@ -65,6 +69,7 @@ import org.mockito.kotlin.whenever
 @RunWith(AndroidJUnit4::class)
 class MetricsLoggerTest {
     @get:Rule val mockitoRule = MockitoRule()
+    @get:Rule val temporaryFolder = TemporaryFolder()
 
     @Mock private lateinit var adapterService: AdapterService
     @Mock private lateinit var remoteDevices: RemoteDevices
@@ -129,6 +134,35 @@ class MetricsLoggerTest {
     @After
     fun tearDown() {
         testableMetricsLogger.close()
+    }
+
+    @Test
+    fun bloomFilterReadsAreBufferedAndCloseTheirFiles() {
+        val deviceFilter = temporaryFolder.newFile("device-filter")
+        val medicalFilter = temporaryFolder.newFile("medical-filter")
+        DeviceBloomfilterGenerator.generateDefaultBloomfilter(deviceFilter.path)
+        MedicalDeviceBloomfilterGenerator.generateDefaultBloomfilter(medicalFilter.path)
+        val descriptorsBefore = File("/proc/self/fd").list()!!.size
+        val violations = mutableListOf<Violation>()
+        val oldPolicy = StrictMode.getThreadPolicy()
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder()
+                .detectUnbufferedIo()
+                .penaltyListener({ it.run() }) { violations.add(it) }
+                .build()
+        )
+        try {
+            repeat(32) {
+                assertThat(testableMetricsLogger.initBloomFilter(deviceFilter.path)).isTrue()
+                assertThat(testableMetricsLogger.initMedicalDeviceBloomFilter(medicalFilter.path))
+                    .isTrue()
+            }
+        } finally {
+            StrictMode.setThreadPolicy(oldPolicy)
+        }
+        assertThat(violations).isEmpty()
+        // Allow incidental framework descriptors, while rejecting one leak per read.
+        assertThat(File("/proc/self/fd").list()!!.size).isAtMost(descriptorsBefore + 4)
     }
 
     /** Test add counters and send them to statsd */

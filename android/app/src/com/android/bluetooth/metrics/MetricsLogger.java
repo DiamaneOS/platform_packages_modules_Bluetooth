@@ -74,6 +74,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -166,8 +167,9 @@ public class MetricsLogger {
                 DeviceBloomfilterGenerator.generateDefaultBloomfilter(path);
             }
 
-            FileInputStream in = new FileInputStream(new File(path));
-            mBloomFilter = BloomFilter.readFrom(in, Funnels.byteArrayFunnel());
+            try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
+                mBloomFilter = BloomFilter.readFrom(in, Funnels.byteArrayFunnel());
+            }
             mBloomFilterInitialized = true;
         } catch (IOException e1) {
             Log.w(TAG, "MetricsLogger can't read the BloomFilter file.");
@@ -199,9 +201,11 @@ public class MetricsLogger {
                 MedicalDeviceBloomfilterGenerator.generateDefaultBloomfilter(path);
             }
 
-            FileInputStream inputStream = new FileInputStream(new File(path));
-            mMedicalDeviceBloomFilter =
-                    BloomFilter.readFrom(inputStream, Funnels.byteArrayFunnel());
+            try (BufferedInputStream inputStream =
+                    new BufferedInputStream(new FileInputStream(medicalDeviceFile))) {
+                mMedicalDeviceBloomFilter =
+                        BloomFilter.readFrom(inputStream, Funnels.byteArrayFunnel());
+            }
             mMedicalDeviceBloomFilterInitialized = true;
         } catch (IOException e1) {
             Log.w(TAG, "MetricsLogger can't read the medical device BloomFilter file.");

@@ -70,8 +70,8 @@ public class MedicalDeviceBloomfilterGenerator {
     public static void generateDefaultBloomfilter(String filePath) throws IOException {
         File outputFile = new File(filePath);
         outputFile.createNewFile(); // if file already exists will do nothing
-        FileOutputStream fos = new FileOutputStream(filePath);
-        fos.write(hexStringToByteArray(BLOOM_FILTER_DEFAULT));
-        fos.close();
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(hexStringToByteArray(BLOOM_FILTER_DEFAULT));
+        }
     }
 }
